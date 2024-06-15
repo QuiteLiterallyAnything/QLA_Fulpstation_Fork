@@ -25,6 +25,20 @@
 	if(hunter)
 		owner = hunter
 
+/obj/item/hunting_contract/examine(mob/user)
+	. = ..()
+	if(user.mind == owner.owner) //If the examining mob's mind is the mind owning the antag datum that owns the contract
+		. += span_notice("This is your hunting contract.")
+		. += span_notice("You may use it to call in one trick weapon of your choosing.")
+		. += span_boldnotice("Do not lose it if you intend to summon the apocalypse.")
+		return
+	if(IS_HERETIC_OR_MONSTER(user))
+		. += span_notice("This is the contract of a heathen who may hunt Mansus scholars.")
+	if(IS_BLOODSUCKER(user))
+		. += span_cult("This is the contract of a mortal who may hunt vampires.")
+	if(IS_CHANGELING(user))
+		. += span_changeling("This is the contract of a lesser organism who may hunt those of our kind.")
+
 /obj/item/hunting_contract/ui_interact(mob/living/user, datum/tgui/ui)
 	if(!IS_MONSTERHUNTER(user))
 		to_chat(usr, span_notice("You are unable to decipher the symbols."))
