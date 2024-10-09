@@ -15,9 +15,8 @@
 	var/list/dancefloor_turfs_types
 	var/dancefloor_exists = FALSE
 
-	var/datum/jukebox/effects_handler
-	//List of brief song snippets that are later associated with visual effects on cast.
-	//All effects and associated vars/procs copied over from dance machine code with minor adjustments.
+	/// List of brief song snippets that are later associated with visual effects on cast.
+	/// All effects and associated vars/procs copied over from dance machine code with minor adjustments.
 	var/list/dancefloor_flare = list(
 		'fulp_modules/sounds/effects/summon_dance_floor/title0_shortened.ogg',
 		'fulp_modules/sounds/effects/summon_dance_floor/title2_shortened.ogg',
@@ -67,6 +66,11 @@
 		if('fulp_modules/sounds/effects/summon_dance_floor/title3_shortened.ogg')
 			lights_spin()
 
+/datum/action/cooldown/spell/summon_dancefloor/Remove()
+	. = ..()
+	if(dancefloor_exists)
+		delete_dancefloor()
+
 /datum/action/cooldown/spell/summon_dancefloor/proc/delete_dancefloor()
 	dancefloor_exists = FALSE
 	QDEL_LIST(spotlights)
@@ -75,9 +79,9 @@
 		var/turf/T = dancefloor_turfs[i]
 		T.ChangeTurf(dancefloor_turfs_types[i], flags = CHANGETURF_INHERIT_AIR)
 
-//////////////////////////////////////////////////////////////////////////////////
-// ALL CODE AFTER THIS POINT HAS BEEN COPIED/READAPTED FROM DANCE MACHINE CODE. //
-//////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+// ALL "Summon Dancefloor" CODE AFTER THIS POINT HAS BEEN COPIED/READAPTED FROM DANCE MACHINE CODE. //
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /datum/action/cooldown/spell/summon_dancefloor/proc/hierofunk()
 	var/turf/target_turf = get_turf(owner)
