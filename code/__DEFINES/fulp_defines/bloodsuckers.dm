@@ -133,6 +133,7 @@
 #define ROLE_BLOODSUCKERBREAKOUT "Bloodsucker Breakout"
 #define ROLE_MONSTERHUNTER "Monster Hunter"
 #define ROLE_INFILTRATOR "Infiltrator"
+#define ROLE_IMMORTAL_SNAIL "Immortal Snail"
 
 /**
  * Miscellaneous defines
