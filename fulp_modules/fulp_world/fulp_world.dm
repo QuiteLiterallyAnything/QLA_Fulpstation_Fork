@@ -16,6 +16,8 @@
 		ROLE_INFILTRATOR = 0,
 	)
 
+	if(at_lowpop(50))
+		SSticker.OnRoundstart(CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(populate_station)))
 
 // DON'T CALL PARENT, we don't want to use TG's update_status here, only ours!
 /world/update_status()
