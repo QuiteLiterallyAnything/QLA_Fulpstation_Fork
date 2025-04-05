@@ -52,3 +52,98 @@
 /datum/component/traitor_objective_register/proc/delete_self()
 	SIGNAL_HANDLER
 	qdel(src)
+
+
+/////////////////////////////////////////////////////////////////////////
+//                traitor_objective_limit_per_time.dm                  //
+/////////////////////////////////////////////////////////////////////////
+
+
+/// Helper component to track events on
+/datum/component/traitor_objective_limit_per_time
+	dupe_mode = COMPONENT_DUPE_HIGHLANDER
+
+	/// The maximum time that an objective will be considered for. Set to -1 to accept any time.
+	var/time_period = 0
+	/// The maximum amount of objectives that can be active or recently active at one time
+	var/maximum_objectives = 0
+	/// The typepath which we check for
+	var/typepath
+
+/datum/component/traitor_objective_limit_per_time/Initialize(typepath, time_period, maximum_objectives)
+	. = ..()
+	if(!istype(parent, /datum/traitor_objective))
+		return COMPONENT_INCOMPATIBLE
+	src.time_period = time_period
+	src.maximum_objectives = maximum_objectives
+	src.typepath = typepath
+	if(!typepath)
+		src.typepath = parent.type
+
+/datum/component/traitor_objective_limit_per_time/RegisterWithParent()
+	RegisterSignal(parent, COMSIG_TRAITOR_OBJECTIVE_PRE_GENERATE, PROC_REF(handle_generate))
+
+/datum/component/traitor_objective_limit_per_time/UnregisterFromParent()
+	UnregisterSignal(parent, COMSIG_TRAITOR_OBJECTIVE_PRE_GENERATE)
+
+
+/datum/component/traitor_objective_limit_per_time/proc/handle_generate(datum/traitor_objective/source, datum/mind/owner, list/potential_duplicates)
+	SIGNAL_HANDLER
+	var/datum/uplink_handler/handler = source.handler
+	if(!handler)
+		return
+	var/count = 0
+	for(var/datum/traitor_objective/objective as anything in handler.potential_duplicate_objectives[typepath])
+		if(time_period != -1 && objective.objective_state != OBJECTIVE_STATE_INACTIVE && (world.time - objective.time_of_completion) > time_period)
+			continue
+		count++
+
+	if(count >= maximum_objectives)
+		return COMPONENT_TRAITOR_OBJECTIVE_ABORT_GENERATION
+
+
+/////////////////////////////////////////////////////////////////////////
+//                 traitor_objective_mind_tracker.dm                   //
+/////////////////////////////////////////////////////////////////////////
+
+
+/// Helper component to track events on
+/datum/component/traitor_objective_mind_tracker
+	dupe_mode = COMPONENT_DUPE_ALLOWED
+
+	/// The target to track
+	var/datum/mind/target
+	/// Signals to listen out for mapped to procs to call
+	var/list/signals
+	/// Current registered target
+	var/mob/current_registered_target
+
+/datum/component/traitor_objective_mind_tracker/Initialize(datum/target, signals)
+	. = ..()
+	if(!istype(parent, /datum/traitor_objective))
+		return COMPONENT_INCOMPATIBLE
+	src.target = target
+	src.signals = signals
+
+/datum/component/traitor_objective_mind_tracker/RegisterWithParent()
+	RegisterSignal(target, COMSIG_MIND_TRANSFERRED, PROC_REF(handle_mind_transferred))
+	RegisterSignal(target, COMSIG_QDELETING, PROC_REF(delete_self))
+	RegisterSignals(parent, list(COMSIG_TRAITOR_OBJECTIVE_COMPLETED, COMSIG_TRAITOR_OBJECTIVE_FAILED), PROC_REF(delete_self))
+	handle_mind_transferred(target)
+
+/datum/component/traitor_objective_mind_tracker/UnregisterFromParent()
+	UnregisterSignal(target, COMSIG_MIND_TRANSFERRED)
+	if(target.current)
+		parent.UnregisterSignal(target.current, signals)
+
+/datum/component/traitor_objective_mind_tracker/proc/handle_mind_transferred(datum/source, mob/previous_body)
+	SIGNAL_HANDLER
+	if(current_registered_target)
+		parent.UnregisterSignal(current_registered_target, signals)
+
+	for(var/signal in signals)
+		parent.RegisterSignal(target.current, signal, signals[signal])
+
+/datum/component/traitor_objective_mind_tracker/proc/delete_self()
+	SIGNAL_HANDLER
+	qdel(src)
