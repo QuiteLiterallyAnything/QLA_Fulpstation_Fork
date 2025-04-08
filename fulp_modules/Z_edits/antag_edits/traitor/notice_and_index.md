@@ -6,5 +6,5 @@ This feature reimplementation has been attempted through **MOSTLY MODULAR** mean
 
 # Index (of files related to traitor secondary objectives):
 
-
+code\modules\mapfluff\ruins\spaceruin_code\garbagetruck.dm
 

@@ -1,322 +1,264 @@
-/datum/traitor_objective_category/steal_item
-	name = "Steal Item"
-	objectives = list(
-		list(
-			/datum/traitor_objective/steal_item/low_risk = 1,
-			/datum/traitor_objective/destroy_item/low_risk = 1,
-		) = 1,
-		/datum/traitor_objective/steal_item/somewhat_risky = 1,
-		list(
-			/datum/traitor_objective/destroy_item/very_risky = 1,
-			/datum/traitor_objective/steal_item/very_risky = 1,
-		) = 1,
-		/datum/traitor_objective/steal_item/most_risky = 1
+/// A traitor objective. Traitor objectives should not be deleted after they have been created and established, only failed.
+/// If a traitor objective needs to be removed from the failed/completed objective list of their handler, then you are doing something wrong
+/// and you should reconsider. When an objective is failed/completed, that is final and the only way you can change that is by refactoring the code.
+/datum/traitor_objective
+	/// The name of the traitor objective
+	var/name = "traitor objective"
+	/// The description of the traitor objective
+	var/description = "this is a traitor objective"
+	/// The uplink handler holder to give the progression and telecrystals to.
+	var/datum/uplink_handler/handler
+	/// The minimum required progression points for this objective
+	var/progression_minimum = null
+	/// The maximum progression before this objective cannot appear anymore
+	var/progression_maximum = INFINITY
+	/// The progression that is rewarded from completing this traitor objective. Can either be a list of list(min, max) or a direct value
+	var/progression_reward = 0 MINUTES
+	/// The telecrystals that are rewarded from completing this traitor objective. Can either be a list of list(min,max) or a direct value
+	var/telecrystal_reward = 0
+	/// TC penalty for failing an objective or cancelling it
+	var/telecrystal_penalty = 1
+	/// The time at which this objective was first created
+	var/time_of_creation = 0
+	/// The time at which this objective was completed
+	var/time_of_completion = 0
+	/// The current state of this objective
+	var/objective_state = OBJECTIVE_STATE_INACTIVE
+	/// Whether this objective was forced upon by an admin. Won't get autocleared by the traitor subsystem if progression surpasses an amount
+	var/forced = FALSE
+	/// Whether this objective was skipped by going from an inactive state to a failed state.
+	var/skipped = FALSE
+
+	/// Determines how influential global progression will affect this objective. Set to 0 to disable.
+	var/global_progression_influence_intensity = 0.1
+	/// Determines how great the deviance has to be before progression starts to get reduced.
+	var/global_progression_deviance_required = 1
+	/// Determines the minimum and maximum progression this objective can be worth as a result of being influenced by global progression
+	/// Should only be smaller than or equal to 1
+	var/global_progression_limit_coeff = 0.6
+	/// The deviance coefficient used to determine the randomness of the progression rewards.
+	var/progression_cost_coeff_deviance = 0.05
+	/// This gets added onto the coeff when calculating the updated progression cost. Used for variability and a slight bit of randomness
+	var/progression_cost_coeff = 0
+	/// The percentage that this objective has been increased or decreased by as a result of progression. Used by the UI
+	var/original_progression = 0
+	/// Abstract type that won't be included as a possible objective
+	var/abstract_type = /datum/traitor_objective
+	/// The duplicate type that will be used to check for duplicates.
+	/// If undefined, this will either take from the abstract type or the type of the objective itself
+	var/duplicate_type = null
+	/// Used only in unit testing. Can be used to explicitly skip the progression_reward and telecrystal_reward check for non-abstract objectives.
+	/// Useful for final objectives as they don't need a reward.
+	var/needs_reward = TRUE
+
+/// Returns a list of variables that can be changed by config, allows for balance through configuration.
+/// It is not recommended to finetweak any values of objectives on your server.
+/datum/traitor_objective/proc/supported_configuration_changes()
+	return list(
+		NAMEOF(src, global_progression_influence_intensity),
+		NAMEOF(src, global_progression_deviance_required),
+		NAMEOF(src, global_progression_limit_coeff)
 	)
 
-GLOBAL_DATUM_INIT(steal_item_handler, /datum/objective_item_handler, new())
+/// Replaces a word in the name of the proc. Also does it for the description
+/datum/traitor_objective/proc/replace_in_name(replace, word)
+	name = replacetext(name, replace, word)
+	description = replacetext(description, replace, word)
 
-/datum/objective_item_handler
-	var/list/list/objectives_by_path
-	var/generated_items = FALSE
-
-/datum/objective_item_handler/New()
+/datum/traitor_objective/New(datum/uplink_handler/handler)
 	. = ..()
-	objectives_by_path = list()
-	for(var/datum/objective_item/item as anything in subtypesof(/datum/objective_item))
-		objectives_by_path[initial(item.targetitem)] = list()
-	RegisterSignal(SSatoms, COMSIG_SUBSYSTEM_POST_INITIALIZE, PROC_REF(save_items))
-	RegisterSignal(SSdcs, COMSIG_GLOB_NEW_ITEM, PROC_REF(new_item_created))
+	src.handler = handler
+	src.time_of_creation = world.time
+	apply_configuration()
+	if(SStraitor.generate_objectives)
+		if(islist(telecrystal_reward))
+			telecrystal_reward = rand(telecrystal_reward[1], telecrystal_reward[2])
+		if(islist(progression_reward))
+			progression_reward = rand(progression_reward[1], progression_reward[2])
+	else
+		if(!islist(telecrystal_reward))
+			telecrystal_reward = list(telecrystal_reward, telecrystal_reward)
+		if(!islist(progression_reward))
+			progression_reward = list(progression_reward, progression_reward)
+	progression_cost_coeff = (rand()*2 - 1) * progression_cost_coeff_deviance
 
-/datum/objective_item_handler/proc/new_item_created(datum/source, obj/item/item)
-	SIGNAL_HANDLER
-	if(HAS_TRAIT(item, TRAIT_ITEM_OBJECTIVE_BLOCKED))
+/datum/traitor_objective/proc/apply_configuration()
+	if(!length(SStraitor.configuration_data))
 		return
-	if(!generated_items)
-		item.add_stealing_item_objective()
+	var/datum/traitor_objective/current_type = type
+	var/list/types = list()
+	while(current_type != /datum/traitor_objective)
+		types += current_type
+		current_type = type2parent(current_type)
+	types += /datum/traitor_objective
+	// Reverse the list direction
+	reverse_range(types)
+	var/list/supported_configurations = supported_configuration_changes()
+	for(var/typepath in types)
+		if(!(typepath in SStraitor.configuration_data))
+			continue
+		var/list/changes = SStraitor.configuration_data[typepath]
+		for(var/variable in changes)
+			if(!(variable in supported_configurations))
+				continue
+			vars[variable] = changes[variable]
+
+
+/// Updates the progression reward, scaling it depending on their current progression compared against the global progression
+/datum/traitor_objective/proc/update_progression_reward()
+	if(!SStraitor.generate_objectives)
 		return
-	var/typepath = item.add_stealing_item_objective()
-	if(typepath != null)
-		register_item(item, typepath)
-
-/// Registers all items that are potentially stealable and removes ones that aren't.
-/// We still need to do things this way because on mapload, items may not be on the station until everything has finished loading.
-/datum/objective_item_handler/proc/save_items()
-	SIGNAL_HANDLER
-	for(var/obj/item/typepath as anything in objectives_by_path)
-		var/list/obj_by_path_cache = objectives_by_path[typepath].Copy()
-		for(var/obj/item/object as anything in obj_by_path_cache)
-			register_item(object, typepath)
-	generated_items = TRUE
-
-/datum/objective_item_handler/proc/register_item(atom/object, typepath)
-	var/turf/place = get_turf(object)
-	if(!place || !is_station_level(place.z))
-		objectives_by_path[typepath] -= object
+	progression_reward = original_progression
+	if(global_progression_influence_intensity <= 0)
 		return
-	RegisterSignal(object, COMSIG_QDELETING, PROC_REF(remove_item))
+	var/minimum_progression = progression_reward * global_progression_limit_coeff
+	var/maximum_progression = progression_reward * (2-global_progression_limit_coeff)
+	var/deviance = (SStraitor.current_global_progression - handler.progression_points) / SStraitor.progression_scaling_deviance
+	if(abs(deviance) < global_progression_deviance_required)
+		return
+	if(abs(deviance) == deviance) // If it is positive
+		deviance = deviance - global_progression_deviance_required
+	else
+		deviance = deviance + global_progression_deviance_required
+	var/coeff = NUM_E ** (global_progression_influence_intensity * abs(deviance)) - 1
+	if(abs(deviance) != deviance)
+		coeff *= -1
 
-/datum/objective_item_handler/proc/remove_item(atom/source)
-	SIGNAL_HANDLER
-	for(var/typepath in objectives_by_path)
-		objectives_by_path[typepath] -= source
+	// This has less of an effect as the coeff gets nearer to -1. Is linear
+	coeff += progression_cost_coeff * min(max(1 - abs(coeff), 1), 0)
 
-/datum/traitor_objective/steal_item
-	name = "Steal %ITEM% and place a schematics scanner on it."
-	description = "Use the button below to materialize the schematic scanner within your hand, where you'll then be able to place it on the item. Additionally, you can keep it near you and let it scan for %TIME% minutes, and you will be rewarded with %PROGRESSION% reputation and %TC% telecrystals."
 
-	progression_minimum = 20 MINUTES
-
-	var/list/possible_items = list()
-	/// The current target item that we are stealing.
-	var/datum/objective_item/steal/target_item
-	/// A list of 2 elements, which contain the range that the time will be in. Represented in minutes.
-	var/hold_time_required = list(5, 15)
-	/// The current time fulfilled around the item
-	var/time_fulfilled = 0
-	/// The maximum distance between the bug and the objective taker for time to count as fulfilled
-	var/max_distance = 4
-	/// The bug that will be put onto the item
-	var/obj/item/traitor_bug/bug
-	/// Any special equipment that may be needed
-	var/list/special_equipment
-	/// Telecrystal reward increase per unit of time.
-	var/minutes_per_telecrystal = 3
-
-	/// Extra TC given for holding the item for the required duration of time.
-	var/extra_tc = 0
-	/// Extra progression given for holding the item for the required duration of time.
-	var/extra_progression = 0
-
-	abstract_type = /datum/traitor_objective/steal_item
-
-/datum/traitor_objective/steal_item/low_risk
-	progression_minimum = 10 MINUTES
-	progression_maximum = 35 MINUTES
-	progression_reward = list(5 MINUTES, 10 MINUTES)
-	telecrystal_reward = 0
-	minutes_per_telecrystal = 6
-
-	possible_items = list(
-		/datum/objective_item/steal/traitor/cargo_budget,
-		/datum/objective_item/steal/traitor/clown_shoes,
-		/datum/objective_item/steal/traitor/lawyers_badge,
-		/datum/objective_item/steal/traitor/chef_moustache,
-		/datum/objective_item/steal/traitor/pka,
+	progression_reward = clamp(
+		progression_reward + progression_reward * coeff,
+		minimum_progression,
+		maximum_progression
 	)
 
-/datum/traitor_objective/steal_item/somewhat_risky
-	progression_minimum = 20 MINUTES
-	progression_maximum = 50 MINUTES
-	progression_reward = 10 MINUTES
-	telecrystal_reward = 2
-
-	possible_items = list(
-		/datum/objective_item/steal/traitor/chief_engineer_belt
-	)
-
-/datum/traitor_objective/steal_item/very_risky
-	progression_minimum = 30 MINUTES
-	progression_reward = 15 MINUTES
-	telecrystal_reward = 3
-
-	possible_items = list(
-		/datum/objective_item/steal/traitor/det_revolver,
-	)
-
-/datum/traitor_objective/steal_item/most_risky
-	progression_minimum = 50 MINUTES
-	progression_reward = 20 MINUTES
-	telecrystal_reward = 5
-
-	possible_items = list(
-		/datum/objective_item/steal/traitor/captain_modsuit,
-		/datum/objective_item/steal/traitor/captain_spare,
-	)
-
-/datum/traitor_objective/steal_item/most_risky/generate_objective(datum/mind/generating_for, list/possible_duplicates)
-	if(!handler.get_completion_count(/datum/traitor_objective/steal_item/very_risky))
-		return FALSE
+/datum/traitor_objective/Destroy(force)
+	handler = null
 	return ..()
 
-/datum/traitor_objective/steal_item/generate_objective(datum/mind/generating_for, list/possible_duplicates)
-	for(var/datum/traitor_objective/steal_item/objective as anything in possible_duplicates)
-		possible_items -= objective.target_item.type
-	while(length(possible_items))
-		var/datum/objective_item/steal/target = pick_n_take(possible_items)
-		target = new target()
-		if(!target.valid_objective_for(list(generating_for), require_owner = TRUE))
-			qdel(target)
-			continue
-		target_item = target
-		break
-	if(!target_item)
-		return FALSE
-	if(length(target_item.special_equipment))
-		special_equipment = target_item.special_equipment
-	hold_time_required = rand(hold_time_required[1], hold_time_required[2])
-	extra_progression += hold_time_required * (1 MINUTES)
-	extra_tc += round(hold_time_required / max(minutes_per_telecrystal, 0.1))
-	replace_in_name("%ITEM%", target_item.name)
-	replace_in_name("%TIME%", hold_time_required)
-	replace_in_name("%TC%", extra_tc)
-	replace_in_name("%PROGRESSION%", DISPLAY_PROGRESSION(extra_progression))
+/// Called whenever the objective is about to be generated. Bypassed by forcefully adding objectives.
+/// Returning false or true will do the same as the generate_objective proc.
+/datum/traitor_objective/proc/can_generate_objective(datum/mind/generating_for, list/possible_duplicates)
 	return TRUE
 
-/datum/traitor_objective/steal_item/ungenerate_objective()
-	STOP_PROCESSING(SSprocessing, src)
-	if(bug)
-		UnregisterSignal(bug, list(COMSIG_TRAITOR_BUG_PLANTED_OBJECT, COMSIG_TRAITOR_BUG_PRE_PLANTED_OBJECT))
-	bug = null
+/// Called when the objective should be generated. Should return if the objective has been successfully generated.
+/// If false is returned, the objective will be removed as a potential objective for the traitor it is being generated for.
+/// This is only temporary, it will run the proc again when objectives are generated for the traitor again.
+/datum/traitor_objective/proc/generate_objective(datum/mind/generating_for, list/possible_duplicates)
+	return FALSE
 
-/datum/traitor_objective/steal_item/generate_ui_buttons(mob/user)
-	var/list/buttons = list()
-	if(special_equipment)
-		buttons += add_ui_button("", "Pressing this will summon any extra special equipment you may need for the mission.", "tools", "summon_gear")
-	if(!bug)
-		buttons += add_ui_button("", "Pressing this will materialize a scanner in your hand, which you can place on the target item", "wifi", "summon_bug")
-	else if(bug.planted_on)
-		buttons += add_ui_button("[DisplayTimeText(time_fulfilled)]", "This tells you how much time you have spent around the target item after the scanner has been planted.", "clock", "none")
-		buttons += add_ui_button("Skip Time", "Pressing this will succeed the mission. You will not get the extra TC and progression.", "forward", "cash_out")
-	return buttons
+/// Used to clean up signals and stop listening to states.
+/datum/traitor_objective/proc/ungenerate_objective()
+	return
 
-/datum/traitor_objective/steal_item/ui_perform_action(mob/living/user, action)
-	. = ..()
-	switch(action)
-		if("summon_bug")
-			if(bug)
-				return
-			bug = new(user.drop_location())
-			user.put_in_hands(bug)
-			bug.balloon_alert(user, "the scanner materializes in your hand")
-			bug.target_object_type = target_item.targetitem
-			AddComponent(/datum/component/traitor_objective_register, bug, \
-				fail_signals = list(COMSIG_QDELETING), \
-				penalty = telecrystal_penalty)
-			RegisterSignal(bug, COMSIG_TRAITOR_BUG_PLANTED_OBJECT, PROC_REF(on_bug_planted))
-			RegisterSignal(bug, COMSIG_TRAITOR_BUG_PRE_PLANTED_OBJECT, PROC_REF(handle_special_case))
-		if("summon_gear")
-			if(!special_equipment)
-				return
-			for(var/item in special_equipment)
-				var/obj/item/new_item = new item(user.drop_location())
-				user.put_in_hands(new_item)
-			user.balloon_alert(user, "the equipment materializes in your hand")
-			special_equipment = null
-		if("cash_out")
-			if(!bug.planted_on)
-				return
-			succeed_objective()
+/datum/traitor_objective/proc/get_log_data()
+	return list(
+		"type" = type,
+		"owner" = handler.owner.key,
+		"name" = name,
+		"description" = description,
+		"telecrystal_reward" = telecrystal_reward,
+		"progression_reward" = progression_reward,
+		"original_progression" = original_progression,
+		"objective_state" = objective_state,
+		"forced" = forced,
+		"time_of_creation" = time_of_creation,
+	)
 
-/datum/traitor_objective/steal_item/process(seconds_per_tick)
-	var/mob/owner = handler.owner?.current
-	if(objective_state != OBJECTIVE_STATE_ACTIVE || !bug.planted_on)
-		return PROCESS_KILL
-	if(!owner)
-		fail_objective()
-		return PROCESS_KILL
-	if(get_dist(get_turf(owner), get_turf(bug)) > max_distance)
+/// Converts the type into a useful debug string to be used for logging and debug display.
+/datum/traitor_objective/proc/to_debug_string()
+	return "[type] (Name: [name], TC: [telecrystal_reward], Progression: [progression_reward], Time of creation: [time_of_creation])"
+
+/datum/traitor_objective/proc/save_objective()
+	SSblackbox.record_feedback("associative", "traitor_objective", 1, get_log_data())
+
+/// Used to handle cleaning up the objective.
+/datum/traitor_objective/proc/handle_cleanup()
+	time_of_completion = world.time
+	ungenerate_objective()
+	if(objective_state == OBJECTIVE_STATE_INACTIVE)
+		skipped = TRUE
+		handler.complete_objective(src) // Remove this objective immediately, no reason to keep it around. It isn't even active
+
+/// Used to fail objectives. Players can clear completed objectives in the UI
+/datum/traitor_objective/proc/fail_objective(penalty_cost = 0, trigger_update = TRUE)
+	// Don't let players succeed already succeeded/failed objectives
+	if(objective_state != OBJECTIVE_STATE_INACTIVE && objective_state != OBJECTIVE_STATE_ACTIVE)
 		return
-	time_fulfilled += seconds_per_tick * (1 SECONDS)
-	if(time_fulfilled >= hold_time_required * (1 MINUTES))
-		progression_reward += extra_progression
-		telecrystal_reward += extra_tc
-		succeed_objective()
-		return PROCESS_KILL
-	handler.on_update()
+	SEND_SIGNAL(src, COMSIG_TRAITOR_OBJECTIVE_FAILED)
+	handle_cleanup()
+	log_traitor("[key_name(handler.owner)] [objective_state == OBJECTIVE_STATE_INACTIVE? "missed" : "failed"] [to_debug_string()]")
+	if(penalty_cost)
+		handler.add_telecrystals(-penalty_cost)
+		objective_state = OBJECTIVE_STATE_FAILED
+	else
+		objective_state = OBJECTIVE_STATE_INVALID
+	save_objective()
+	if(trigger_update)
+		handler.on_update() // Trigger an update to the UI
 
-/datum/traitor_objective/steal_item/proc/handle_special_case(obj/item/source, obj/item/target)
-	SIGNAL_HANDLER
-	if(HAS_TRAIT(target, TRAIT_ITEM_OBJECTIVE_BLOCKED))
-		return COMPONENT_FORCE_FAIL_PLACEMENT
-	if(istype(target, target_item.targetitem))
-		if(!target_item.check_special_completion(target))
-			return COMPONENT_FORCE_FAIL_PLACEMENT
+/// Used to succeed objectives. Allows the player to cash it out in the UI.
+/datum/traitor_objective/proc/succeed_objective()
+	// Don't let players succeed already succeeded/failed objectives
+	if(objective_state != OBJECTIVE_STATE_INACTIVE && objective_state != OBJECTIVE_STATE_ACTIVE)
 		return
+	SEND_SIGNAL(src, COMSIG_TRAITOR_OBJECTIVE_COMPLETED)
+	SEND_GLOBAL_SIGNAL(COMSIG_GLOB_TRAITOR_OBJECTIVE_COMPLETED, src)
+	handle_cleanup()
+	log_traitor("[key_name(handler.owner)] [objective_state == OBJECTIVE_STATE_INACTIVE? "missed" : "completed"] [to_debug_string()]")
+	objective_state = OBJECTIVE_STATE_COMPLETED
+	save_objective()
+	handler.on_update() // Trigger an update to the UI
 
-	var/found = FALSE
-	for(var/typepath in target_item.valid_containers)
-		if(istype(target, typepath))
-			found = TRUE
-			break
+/// Called by player input, do not call directly. Validates whether the objective is finished and pays out the handler if it is.
+/datum/traitor_objective/proc/finish_objective(mob/user)
+	switch(objective_state)
+		if(OBJECTIVE_STATE_FAILED, OBJECTIVE_STATE_INVALID)
+			user.playsound_local(get_turf(user), 'sound/music/antag/traitor/objective_failed.ogg', vol = 100, vary = FALSE, channel = CHANNEL_TRAITOR)
+			return TRUE
+		if(OBJECTIVE_STATE_COMPLETED)
+			user.playsound_local(get_turf(user), 'sound/music/antag/traitor/objective_success.ogg', vol = 100, vary = FALSE, channel = CHANNEL_TRAITOR)
+			completion_payout()
+			return TRUE
+	return FALSE
 
-	if(!found)
-		return
+/// Called when rewards should be given to the user.
+/datum/traitor_objective/proc/completion_payout()
+	handler.progression_points += progression_reward
+	handler.add_telecrystals(telecrystal_reward)
 
-	var/found_item = locate(target_item.targetitem) in target
-	if(!found_item || !target_item.check_special_completion(found_item))
-		return COMPONENT_FORCE_FAIL_PLACEMENT
-	return COMPONENT_FORCE_PLACEMENT
+/// Used for sending data to the uplink UI
+/datum/traitor_objective/proc/uplink_ui_data(mob/user)
+	return list(
+		"name" = name,
+		"description" = description,
+		"progression_minimum" = progression_minimum,
+		"progression_reward" = progression_reward,
+		"telecrystal_reward" = telecrystal_reward,
+		"ui_buttons" = generate_ui_buttons(user),
+		"objective_state" = objective_state,
+		"original_progression" = original_progression,
+		"telecrystal_penalty" = telecrystal_penalty,
+	)
 
-/datum/traitor_objective/steal_item/proc/on_bug_planted(obj/item/source, obj/item/location)
-	SIGNAL_HANDLER
-	if(objective_state == OBJECTIVE_STATE_ACTIVE)
-		START_PROCESSING(SSprocessing, src)
+/datum/traitor_objective/proc/on_objective_taken(mob/user)
+	SStraitor.on_objective_taken(src)
+	log_traitor("[key_name(handler.owner)] has taken an objective: [to_debug_string()]")
 
-/obj/item/traitor_bug
-	name = "suspicious device"
-	desc = "It looks dangerous."
-	item_flags = NOBLUDGEON
+/// Used for generating the UI buttons for the UI. Use ui_perform_action to respond to clicks.
+/datum/traitor_objective/proc/generate_ui_buttons(mob/user)
+	return
 
-	icon = 'icons/obj/antags/syndicate_tools.dmi'
-	icon_state = "bug"
+/datum/traitor_objective/proc/add_ui_button(name, tooltip, icon, action)
+	return list(list(
+		"name" = name,
+		"tooltip" = tooltip,
+		"icon" = icon,
+		"action" = action,
+	))
 
-	/// The object on which this bug can be planted on. Has to be a type.
-	var/obj/target_object_type
-	/// The object this bug is currently planted on.
-	var/obj/planted_on
-	/// The time it takes to place this bug.
-	var/deploy_time = 10 SECONDS
-
-/obj/item/traitor_bug/Initialize(mapload)
-	. = ..()
-	ADD_TRAIT(src, TRAIT_EXAMINE_SKIP, INNATE_TRAIT)
-
-/obj/item/traitor_bug/examine(mob/user)
-	. = ..()
-	if(planted_on)
-		return
-
-	if(IS_TRAITOR(user))
-		if(target_object_type)
-			. += span_notice("This device must be placed by <b>clicking on the [initial(target_object_type.name)]</b> with it.")
-		. += span_notice("Remember, you may leave behind fingerprints or fibers on the device. Use <b>soap</b> or similar to scrub it clean to be safe!")
-
-/obj/item/traitor_bug/interact_with_atom(atom/movable/target, mob/living/user, list/modifiers)
-	if(!target_object_type || !ismovable(target))
-		return NONE
-	if(SHOULD_SKIP_INTERACTION(target, src, user))
-		return NONE
-	var/result = SEND_SIGNAL(src, COMSIG_TRAITOR_BUG_PRE_PLANTED_OBJECT, target)
-	if(!(result & COMPONENT_FORCE_PLACEMENT))
-		if(result & COMPONENT_FORCE_FAIL_PLACEMENT || !istype(target, target_object_type))
-			balloon_alert(user, "you can't attach this onto here!")
-			return ITEM_INTERACT_BLOCKING
-	if(!do_after(user, deploy_time, src, hidden = TRUE))
-		return ITEM_INTERACT_BLOCKING
-	if(planted_on)
-		return ITEM_INTERACT_BLOCKING
-	forceMove(target)
-	target.vis_contents += src
-	vis_flags |= VIS_INHERIT_PLANE
-	planted_on = target
-	RegisterSignal(planted_on, COMSIG_QDELETING, PROC_REF(handle_planted_on_deletion))
-	SEND_SIGNAL(src, COMSIG_TRAITOR_BUG_PLANTED_OBJECT, target)
-	return ITEM_INTERACT_SUCCESS
-
-/obj/item/traitor_bug/proc/handle_planted_on_deletion()
-	planted_on = null
-
-/obj/item/traitor_bug/Destroy()
-	if(planted_on)
-		vis_flags &= ~VIS_INHERIT_PLANE
-		planted_on.vis_contents -= src
-	return ..()
-
-/obj/item/traitor_bug/Moved(atom/old_loc, movement_dir, forced, list/old_locs, momentum_change = TRUE)
-	. = ..()
-	if(planted_on)
-		vis_flags &= ~VIS_INHERIT_PLANE
-		planted_on.vis_contents -= src
-		anchored = FALSE
-		UnregisterSignal(planted_on, COMSIG_QDELETING)
-		planted_on = null
+/// Return TRUE to trigger a UI update
+/datum/traitor_objective/proc/ui_perform_action(mob/user, action)
+	return TRUE
