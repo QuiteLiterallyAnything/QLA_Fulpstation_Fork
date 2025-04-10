@@ -1,57 +1,55 @@
-/datum/traitor_objective/ultimate/supermatter_cascade
-	name = "Destroy the station by causing a crystallizing resonance cascade"
-	description = "Destroy the station by causing a supermatter cascade. Go to %AREA% to retrieve the destabilizing crystal \
-		and use it on the supermatter."
+/datum/traitor_objective_category/hack_comm_console
+	name = "Hack Communication Console"
+	objectives = list(
+		/datum/traitor_objective/hack_comm_console = 1,
+	)
 
-	///area type the objective owner must be in to receive the destabilizing crystal
-	var/area/dest_crystal_area_pickup
-	///checker on whether we have sent the crystal yet.
-	var/sent_crystal = FALSE
+/datum/traitor_objective/hack_comm_console
+	name = "Hack a communication console to summon an unknown threat to the station"
+	description = "Right click on a communication console to begin the hacking process. Once started, the AI will know that you are hacking a communication console, so be ready to run or have yourself disguised to prevent being caught. This objective will invalidate itself if another traitor completes it first."
 
-/datum/traitor_objective/ultimate/supermatter_cascade/can_generate_objective(generating_for, list/possible_duplicates)
-	. = ..()
-	if(!.)
+	progression_minimum = 60 MINUTES
+	progression_reward = list(30 MINUTES, 40 MINUTES)
+	telecrystal_reward = list(7, 12)
+
+	var/progression_objectives_minimum = 20 MINUTES
+
+/datum/traitor_objective/hack_comm_console/can_generate_objective(datum/mind/generating_for, list/possible_duplicates)
+	if(length(possible_duplicates) > 0)
 		return FALSE
-
-	if(isnull(GLOB.main_supermatter_engine))
+	if(SStraitor.get_taken_count(/datum/traitor_objective/hack_comm_console) > 0)
 		return FALSE
-	var/obj/machinery/power/supermatter_crystal/engine/crystal = locate() in GLOB.main_supermatter_engine
-	if(!is_station_level(crystal.z) && !is_mining_level(crystal.z))
+	if(handler.get_completion_progression(/datum/traitor_objective) < progression_objectives_minimum)
 		return FALSE
-
 	return TRUE
 
-/datum/traitor_objective/ultimate/supermatter_cascade/generate_objective(datum/mind/generating_for, list/possible_duplicates)
-	var/list/possible_areas = GLOB.the_station_areas.Copy()
-	for(var/area/possible_area as anything in possible_areas)
-		//remove areas too close to the destination, too obvious for our poor shmuck, or just unfair
-		if(ispath(possible_area, /area/station/hallway) || ispath(possible_area, /area/station/security))
-			possible_areas -= possible_area
-	if(length(possible_areas) == 0)
-		return FALSE
-	dest_crystal_area_pickup = pick(possible_areas)
-	replace_in_name("%AREA%", initial(dest_crystal_area_pickup.name))
+/datum/traitor_objective/hack_comm_console/generate_objective(datum/mind/generating_for, list/possible_duplicates)
+	AddComponent(/datum/component/traitor_objective_mind_tracker, generating_for, \
+		signals = list(COMSIG_LIVING_UNARMED_ATTACK = PROC_REF(on_unarmed_attack)))
+	RegisterSignal(SSdcs, COMSIG_GLOB_TRAITOR_OBJECTIVE_COMPLETED, PROC_REF(on_global_obj_completed))
 	return TRUE
 
-/datum/traitor_objective/ultimate/supermatter_cascade/generate_ui_buttons(mob/user)
-	var/list/buttons = list()
-	if(!sent_crystal)
-		buttons += add_ui_button("", "Pressing this will call down a pod with the supermatter cascade kit.", "biohazard", "destabilizing_crystal")
-	return buttons
+/datum/traitor_objective/hack_comm_console/ungenerate_objective()
+	UnregisterSignal(SSdcs, COMSIG_GLOB_TRAITOR_OBJECTIVE_COMPLETED)
 
-/datum/traitor_objective/ultimate/supermatter_cascade/ui_perform_action(mob/living/user, action)
-	. = ..()
-	switch(action)
-		if("destabilizing_crystal")
-			if(sent_crystal)
-				return
-			var/area/delivery_area = get_area(user)
-			if(delivery_area.type != dest_crystal_area_pickup)
-				to_chat(user, span_warning("You must be in [initial(dest_crystal_area_pickup.name)] to receive the supermatter cascade kit."))
-				return
-			sent_crystal = TRUE
-			podspawn(list(
-				"target" = get_turf(user),
-				"style" = /datum/pod_style/syndicate,
-				"spawn" = /obj/item/destabilizing_crystal,
-			))
+/datum/traitor_objective/hack_comm_console/proc/on_global_obj_completed(datum/source, datum/traitor_objective/objective)
+	SIGNAL_HANDLER
+	if(istype(objective, /datum/traitor_objective/hack_comm_console))
+		fail_objective()
+
+/datum/traitor_objective/hack_comm_console/proc/on_unarmed_attack(mob/user, obj/machinery/computer/communications/target, proximity_flag, modifiers)
+	SIGNAL_HANDLER
+	if(!proximity_flag)
+		return
+	if(!modifiers[RIGHT_CLICK])
+		return
+	if(!istype(target))
+		return
+	INVOKE_ASYNC(src, PROC_REF(begin_hack), user, target)
+	return COMPONENT_CANCEL_ATTACK_CHAIN
+
+/datum/traitor_objective/hack_comm_console/proc/begin_hack(mob/user, obj/machinery/computer/communications/target)
+	if(!target.try_hack_console(user))
+		return
+
+	succeed_objective()

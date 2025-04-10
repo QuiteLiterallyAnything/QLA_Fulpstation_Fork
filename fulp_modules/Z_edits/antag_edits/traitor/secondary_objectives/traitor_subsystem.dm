@@ -19,6 +19,10 @@
 	/// A list of all existing objectives by type
 	var/list/all_objectives_by_type = list()
 
+	/// The amount of deviance from the current global progression before you start getting 2x the current scaling or no scaling at all
+	/// Also affects objectives, so -50% progress reduction or 50% progress boost.
+	var/progression_scaling_deviance = 20 MINUTES
+
 /datum/controller/subsystem/traitor/Initialize()
 	category_handler = new()
 	traitor_debug_panel = new(category_handler)

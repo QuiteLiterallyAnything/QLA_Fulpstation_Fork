@@ -1,4 +1,4 @@
-/datum/mind/proc/traitor_panel()
+/datum/mind/traitor_panel()
 	if(!SSticker.HasRoundStarted())
 		tgui_alert(usr, "Not before round-start!", "Alert")
 		return

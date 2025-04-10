@@ -6844,7 +6844,6 @@
 #include "fulp_modules\Z_edits\antag_edits\traitor\secondary_objectives\dynamic_rulesets.dm"
 #include "fulp_modules\Z_edits\antag_edits\traitor\secondary_objectives\objective_category.dm"
 #include "fulp_modules\Z_edits\antag_edits\traitor\secondary_objectives\objective_helper_components.dm"
-#include "fulp_modules\Z_edits\antag_edits\traitor\secondary_objectives\objective_items.dm"
 #include "fulp_modules\Z_edits\antag_edits\traitor\secondary_objectives\traitor_antag_panel.dm"
 #include "fulp_modules\Z_edits\antag_edits\traitor\secondary_objectives\traitor_datum.dm"
 #include "fulp_modules\Z_edits\antag_edits\traitor\secondary_objectives\traitor_objective.dm"

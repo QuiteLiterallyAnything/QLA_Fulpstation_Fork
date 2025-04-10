@@ -1,3 +1,5 @@
+#define METEOR_SHIELD_EMAG_COOLDOWN 1 MINUTES
+
 /datum/traitor_objective/ultimate/dark_matteor
 	name = "Summon a dark matter singularity to consume the station."
 	description = "Go to %AREA%, and receive the smuggled satellites + emag. Set up and emag the satellites, \
@@ -101,4 +103,6 @@
 	say("Recalibrating... ETA:[DisplayTimeText(cooldown_applied)].")
 	if(active) //if we allowed inactive updates a sat could be worth -1 active meteor shields on first emag
 		update_emagged_meteor_sat(user)
-	return TRU
+	return TRUE
+
+#undef METEOR_SHIELD_EMAG_COOLDOWN
