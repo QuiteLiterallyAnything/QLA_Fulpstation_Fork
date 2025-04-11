@@ -156,7 +156,9 @@
 	active = TRUE
 	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
-		ui = new(user, src, "Uplink", name)
+		// FULP EDIT
+		ui = new(user, src, "FulpUplink", name)
+		// FULP EDIT END
 		// This UI is only ever opened by one person,
 		// and never is updated outside of user input.
 		ui.set_autoupdate(FALSE)

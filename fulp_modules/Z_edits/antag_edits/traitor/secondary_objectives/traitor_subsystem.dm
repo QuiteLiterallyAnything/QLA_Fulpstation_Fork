@@ -1,6 +1,6 @@
 /datum/controller/subsystem/traitor
 	/// File to load configurations from.
-	var/configuration_path = "fulp_modules/fulp_world/fulp_config_traitor.dm"
+	var/configuration_path = "fulp_modules/fulp_world/traitor_objective.json"
 	/// Global configuration data that gets applied to each objective when it is created.
 	/// Basic objective format
 	/// '/datum/traitor_objective/path/to/objective': {

@@ -22,7 +22,7 @@ import {
 } from '../../interfaces/Uplink/calculateDangerLevel';
 import { GenericUplink, Item } from '../../interfaces/Uplink/GenericUplink';
 import { Objective, ObjectiveMenu } from './ObjectiveMenu';
-import { PrimaryObjectiveMenu } from './FulpPrimaryObjectiveMenu';
+import { FulpPrimaryObjectiveMenu } from './FulpPrimaryObjectiveMenu';
 
 type UplinkItem = {
   id: string;
@@ -97,10 +97,10 @@ type ItemExtraData = Item & {
   };
 };
 
-// Cache response so it's only sent once
+//  Cache response so it's only sent once
 let fetchServerData: Promise<ServerData> | undefined;
 
-export class Uplink extends Component<{}, UplinkState> {
+export class FulpUplink extends Component<{}, UplinkState> {
   constructor(props) {
     super(props);
     this.state = {
@@ -267,6 +267,8 @@ export class Uplink extends Component<{}, UplinkState> {
           icon: item.icon,
           icon_state: item.icon_state,
         },
+        population_tooltip: '',
+        insufficient_population: false,
       });
     }
     // Get the difference between the current progression and
@@ -407,7 +409,7 @@ export class Uplink extends Component<{}, UplinkState> {
             </Stack.Item>
             <Stack.Item grow>
               {(currentTab === 0 && primary_objectives && (
-                <PrimaryObjectiveMenu
+                <FulpPrimaryObjectiveMenu
                   primary_objectives={primary_objectives}
                   final_objective={completed_final_objective}
                   can_renegotiate={can_renegotiate}

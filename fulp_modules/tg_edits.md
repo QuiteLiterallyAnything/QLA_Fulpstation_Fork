@@ -24,6 +24,8 @@
 
 - tools/deploy.sh > Adds Fulp's ``icon`` and ``greyscale/json_configs`` folders to the list of folders that RustG uses to compile icons.
 
+- code\datums\components\uplink.dm > Replaces the default uplink UI with Fulp's version (which includes traitor secondary objectives).
+
 ## All Fulp files not contained within /fulp_modules/
 
 - code/__DEFINES/fulp_defines > Contains all of our defines

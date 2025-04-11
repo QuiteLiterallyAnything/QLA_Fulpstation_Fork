@@ -3,13 +3,15 @@ import { Box, Button, Dimmer, Section, Stack } from 'tgui-core/components';
 import { useBackend } from '../../backend';
 import { ObjectiveElement } from './ObjectiveMenu';
 
-type PrimaryObjectiveMenuProps = {
+type FulpPrimaryObjectiveMenuProps = {
   primary_objectives;
   final_objective;
   can_renegotiate;
 };
 
-export const PrimaryObjectiveMenu = (props: PrimaryObjectiveMenuProps) => {
+export const FulpPrimaryObjectiveMenu = (
+  props: FulpPrimaryObjectiveMenuProps,
+) => {
   const { act } = useBackend();
   const { primary_objectives, final_objective, can_renegotiate } = props;
   return (
