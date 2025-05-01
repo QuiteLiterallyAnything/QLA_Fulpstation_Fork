@@ -8,6 +8,8 @@
 	/// Radio frequency that traitor must speak on to get a replacement uplink
 	var/replacement_uplink_frequency = ""
 
+	ui_name = "FulpAntagInfoTraitor"
+
 /datum/antagonist/traitor/on_gain()
 	..()
 	generate_replacement_codes()

@@ -77,6 +77,15 @@
 	locked = FALSE
 	replacement_uplink.balloon_alert_to_viewers("beep", vision_distance = COMBAT_MESSAGE_RANGE)
 
+/datum/component/uplink/ui_interact(mob/user, datum/tgui/ui)
+	active = TRUE
+	ui = SStgui.try_update_ui(user, src, ui)
+	if(!ui)
+		ui = new(user, src, "FulpUplink", name)
+		// This UI is only ever opened by one person,
+		// and never is updated outside of user input.
+		ui.set_autoupdate(FALSE)
+		ui.open()
 
 /datum/component/uplink/ui_data(mob/user)
 	if(!user.mind)
@@ -156,6 +165,7 @@
 	data["purchased_items"] = length(uplink_handler.purchase_log?.purchase_log)
 	data["can_renegotiate"] = user.mind == uplink_handler.owner && uplink_handler.can_replace_objectives?.Invoke() == TRUE
 	return data
+
 /datum/component/uplink/ui_static_data(mob/user)
 	var/list/data = list()
 	data["uplink_flag"] = uplink_handler.uplink_flag

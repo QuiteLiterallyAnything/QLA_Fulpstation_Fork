@@ -19,7 +19,7 @@ import {
 } from '../../interfaces/Uplink/calculateDangerLevel';
 import { ObjectiveState } from './constants';
 
-export type Objective = {
+export type TraitorObjective = {
   id: number;
   name: string;
   description: string;
@@ -41,20 +41,20 @@ export type ObjectiveUiButton = {
 };
 
 type ObjectiveMenuProps = {
-  activeObjectives: Objective[];
-  potentialObjectives: Objective[];
+  activeObjectives: TraitorObjective[];
+  potentialObjectives: TraitorObjective[];
   maximumActiveObjectives: number;
   maximumPotentialObjectives: number;
 
-  handleStartObjective: (objective: Objective) => void;
-  handleObjectiveAction: (objective: Objective, action: string) => void;
-  handleObjectiveCompleted: (objective: Objective) => void;
-  handleObjectiveAbort: (objective: Objective) => void;
+  handleStartObjective: (objective: TraitorObjective) => void;
+  handleObjectiveAction: (objective: TraitorObjective, action: string) => void;
+  handleObjectiveCompleted: (objective: TraitorObjective) => void;
+  handleObjectiveAbort: (objective: TraitorObjective) => void;
   handleRequestObjectives: () => void;
 };
 
 type ObjectiveMenuState = {
-  draggingObjective: Objective | null;
+  draggingObjective: TraitorObjective | null;
   objectiveX: number;
   objectiveY: number;
 };
@@ -79,7 +79,7 @@ export class ObjectiveMenu extends Component<
     this.handleObjectiveAdded = this.handleObjectiveAdded.bind(this);
   }
 
-  handleObjectiveClick(event: MouseEvent, objective: Objective) {
+  handleObjectiveClick(event: MouseEvent, objective: TraitorObjective) {
     if (this.state?.draggingObjective) {
       return;
     }
@@ -284,11 +284,11 @@ export class ObjectiveMenu extends Component<
 }
 
 const ObjectiveFunction = (
-  objective: Objective,
+  objective: TraitorObjective,
   active: boolean,
-  handleObjectiveAction?: (objective: Objective, action: string) => void,
-  handleCompletion?: (objective: Objective) => void,
-  handleAbort?: (objective: Objective) => void,
+  handleObjectiveAction?: (objective: TraitorObjective, action: string) => void,
+  handleCompletion?: (objective: TraitorObjective) => void,
+  handleAbort?: (objective: TraitorObjective) => void,
   grow: boolean = false,
 ) => {
   const dangerLevel = getDangerLevel(objective.progression_minimum);

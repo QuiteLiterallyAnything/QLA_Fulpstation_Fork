@@ -21,7 +21,7 @@ import {
   dangerLevelsTooltip,
 } from '../../interfaces/Uplink/calculateDangerLevel';
 import { GenericUplink, Item } from '../../interfaces/Uplink/GenericUplink';
-import { Objective, ObjectiveMenu } from './ObjectiveMenu';
+import { TraitorObjective, ObjectiveMenu } from './ObjectiveMenu';
 import { FulpPrimaryObjectiveMenu } from './FulpPrimaryObjectiveMenu';
 
 type UplinkItem = {
@@ -69,8 +69,8 @@ type UplinkData = {
     [key: number]: string;
   };
   completed_final_objective: string;
-  potential_objectives: Objective[];
-  active_objectives: Objective[];
+  potential_objectives: TraitorObjective[];
+  active_objectives: TraitorObjective[];
   maximum_active_objectives: number;
   maximum_potential_objectives: number;
   purchased_items: number;
