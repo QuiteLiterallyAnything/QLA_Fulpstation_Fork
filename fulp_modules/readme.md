@@ -2,12 +2,12 @@
 
 ## Contribute to TG or Fulp?
 
-As we are a TG downstream, any PR that they merge, will eventually trickle down to us. We highly encourage contributors to PR to TG, rather than Fulp, as it will help us both in the long run.
+As we are a TG downstream, any PR that they merge will eventually trickle down to us. We highly encourage contributors to PR to TG rather than Fulp since it will help us both in the long run.
 - <https://github.com/tgstation/tgstation>
 
-This is a very important thing to know before contributing to Fulpstation. We rebased to rid ourselves of the old grudgecode, we do not wish to re-become it.
+This policy is a very important thing to know before contributing to Fulpstation. We rebased to rid ourselves of the old grudgecode, we do not wish to re-become it.
 
-NOTE: If you plan on Contributing to Fulpstation, you may want to instead read the guide, located here;
+NOTE: If you plan on contributing to Fulpstation, you may want to read the guide located here:
 - <https://wiki.fulp.gg/en/GuideToContributing>
 
 ## Modular Code/Modularity
@@ -16,21 +16,28 @@ Modular, as we use it, is described as "Doesn't touch Core TG files/folders".
 
 ### What is a TG file and why does it matter?
 
-- a TG file is a file that we share with our upstream, TGstation. Every time we update, all our files get updated to whatever TG has them set to.
+- A TG file is a file that we share with our upstream, TGstation. Every time we update, all our files get updated to whatever TG has them set to.
 - To counter this, we have our a fulp_modules folder, containing all the fulp files.
-- There is one exception, our TGUI files, which is placed in the same folder as TG's. It is placed there because of some dumb tgui stuff who cares no one really knows, it just does. Ok?
+- There is one exception: our TGUI files. These are placed in the same folder as TG's. It's there because of some dumb tgui stuff who cares no one really knows, it just does. Ok?
 
 ### What is a TG edit?
 
-- a TG edit is when Fulp code is inserted into a TG core file/folder.
-- An obvious example of this are maps and our tgui files, but they are also used for patches/edits we make, that can't be overwriten instead.
+- A TG edit is when Fulp code is inserted into a TG core file/folder.
+- Obvious examples of this would be our maps and tgui files, but these are also used for changes that can't work as overrides.
+
+### What are Overrides?
+
+- Since our '.dm' files are included last in `tgstation.dme`, any datums/procs declared (or even *redeclared*) within them will take precedence over the versions found in '/code'.
+- This is very useful since it allows us to change TG code without making a direct TG edit.
+- DO NOTE: It's best to use overrides sparingly and with clear documentation and/or comments. They have the potential to cause a lot of confusion and bugs during TGUs if we inherit changes from TG that affect things we've overriden.
 
 ## Fulp Modules
 
 ### What is Fulp Modules?
 
-This file contains near-all the code exclusive to Fulpstation.
-Due to how maintaining a downstream codebase works, since we must frequently update to latest TG, making sure most our code is as Modular as it can be, is the best way to keep us up-to-date without requiring days worth of effort for every update.
+This file contains nearly all of the code exclusive to Fulpstation.
+
+Due to how maintaining a downstream codebase works, we must frequently make sure our code is as modular as possible. This is the best way to keep us up-to-date without requiring days worth of effort for every update.
 
 We are incredibly strict in modularity, and Pull Requests can (and will) be quickly denied and closed if they are unable to be modular. Exceptions are granted to this, such as if we are already touching said file, as numbers of lines edited is irrelevant once there's at least one line changed.
 
@@ -43,19 +50,24 @@ Additionally, edits to TG files MUST be documented in tg_edits.md - This is beca
 
 # Workflows
 
-Due to Fulpstation handling workflows themselves, and due to TG handing us their workflows, to not get flooded with emails, you should disable your Fork's workflows (except Cl Suite and Generate Documentation). To do this, go onto your fork of the Repository, go to the Actions tab, then go to each workflow and click the ... at the right, then manually disable them. It should end up looking like this.
+Since we handle workflows ourselves and TG hands us their workflows, you should disable your fork's workflows (**except CI Suite and Generate Documentation**) to not get flooded with emails. To do this, go onto your fork of the repository, go to the Actions tab, and for each workflow:
+
+1) Click the ... (ellipses) at the top right.
+2) Press "disable workflow".
+
+It should end up looking like this:
 
 ![image](https://i.imgur.com/J8BaqtN.png)
 
-While this isn't required, Fulpstation and your own fork has different workflows, so yours won't affect ours, it will prevent you from getting flooded with emails telling you they've failed.
+Our repo and your fork have different workflows: yours won't affect ours. This will, however, prevent you from getting flooded with failed workflow notifiction emails. While all of this isn't required, it is recommended.
 
 ## Outside of Fulp modules
 
 ### Defines
 
-Defines need to be ticked (i.e. listed in the .dme) before the files where they're used. This includes helpers, symbolic constants, etc. If we were to keep our defines inside of the `fulp_modules` folder, they would be ticked before *our* files, but *after* TG's files. This is a problem if we ever want to make use of them in a TG-Edit, or in other files that must be placed outside of `fulp_modules`.
+Defines need to be ticked (i.e. listed in the .dme) before the files where they're used. This includes helpers, symbolic constants, etc. If we were to keep our defines inside of the `fulp_modules` folder, they would be ticked before *our* files, but *after* TG's files. This is a problem if we ever want to make use of them in a TG edit or files placed (by necessity) outside of `fulp_modules`.
 
-For this reason, all our defines are placed in a subfolder called `fulp_defines`, inside of TG's `code/__DEFINES` folder. This way, they are ticked immediately after TG's defines.
+For this reason, all our defines are placed in a subfolder called `fulp_defines` inside of TG's `code/__DEFINES` folder. This way, they are ticked immediately after TG's defines.
 
 ### Maps
 
@@ -67,15 +79,15 @@ Maps are kept outside of `fulp_modules` for two reasons.
 
 ### TGUI
 
-Due to how TG handles TGUI, there is currently no known way to make this hosted in the Fulp modules folder, therefore they are put in TG's TGUI folder instead. While this is an annoyance, we don't have any better alternative for now, so you can ignore it lacking modularity.
+Due to how TG handles TGUI, there is currently no known way to make this hosted in the Fulp modules folder. They are therefore put in TG's TGUI folder instead. While this is an annoyance, we don't have any better alternative for now, so you can ignore it lacking modularity.
 
 ## TGU
 
-TGU (TG Update) is when a Contributor updates our repository to the latest version of TG Code (<https://github.com/tgstation/tgstation/>)
+A TGU (TG Update) is when a contributor updates our repository to the latest version of TG code (<https://github.com/tgstation/tgstation/>).
 We do NOT have a mirror bot, so things must be manually done with GitBash (<https://gitforwindows.org/>) by setting tgstation/tgstation as your remote upstream. If you do not know how, you can ask in the Discord for help.
 
-When a Contributor does a TGU, there are a few things to make sure functions properly:
-1) No Fulpstation edits or files are being deleted. You can use our tg_edits.md file to help guide you through this, as it lists all our edits.
-2) The tgstation.dme file isn't commenting out any Fulp files and is fully up-to-date.
+When a contributor does a TGU, there are a few things they must ensure:
+1) No Fulpstation edits or files are being deleted. You can use our `tg_edits.md` file to help guide yourself through this— it lists all of our edits.
+2) The `tgstation.dme` file isn't commenting out any Fulp files and is fully up-to-date.
 
-Just as a note, A TGU should occur maximum every 2 months, as to not weight too much work on maintaining our own code to match our upstream's.
+Ideally, a TGU should occur at least every two months. This allows TGUs to remain relatively manageable and unintimidating .

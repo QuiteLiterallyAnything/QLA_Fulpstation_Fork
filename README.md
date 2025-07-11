@@ -12,11 +12,11 @@
 * **Discord:** https://discord.gg/SVu782A
 
 
-This is the codebase for Fulpstation, a custom fork of the [/tg/station](https://github.com/tgstation/tgstation) flavoured fork of SpaceStation 13.
+This is the codebase for Fulpstation, a custom fork of the [TGstation](https://github.com/tgstation/tgstation) flavoured fork of Space Station 13. The majority of this README file has been adapted from that of TGstation.
 
 Space Station 13 is a paranoia-laden round-based roleplaying game set against the backdrop of a nonsensical, metal death trap masquerading as a space station, with charming spritework designed to represent the sci-fi setting and its dangerous undertones. Have fun, and survive!
 
-*All github inquiries (such as moderation actions) may be handled via the /tg/station discord [#coding-general](https://discord.com/channels/326822144233439242/326831214667235328). Simply ping the `@Maintainer` role, following the guide on asking questions located in the channel description, with your issue!*
+*All GitHub inquiries (such as moderation actions) may be handled via the Fulpstation Discord server's [#coder-cafe](https://discordapp.com/channels/279359975250198528/617105911168892928) channel. Simply ping the `@Maintainer` role with your issue!*
 
 ## DOWNLOADING
 [Downloading](.github/guides/DOWNLOADING.md)
@@ -37,13 +37,13 @@ Space Station 13 is a paranoia-laden round-based roleplaying game set against th
 
 ## Getting started
 
-For contribution guidelines refer to the [Guides for Contributors](.github/CONTRIBUTING.md).
+For contribution guidelines refer to TG's [Guides for Contributors](.github/CONTRIBUTING.md) and the [README file in '/fulp_modules'](fulp_modules/readme.md).
 
-For getting started (dev env, compilation) see the HackMD document [here](https://hackmd.io/@tgstation/HJ8OdjNBc#tgstation-Development-Guide).
+For getting started (dev env, compilation) see TGstation's HackMD document [here](https://hackmd.io/@tgstation/HJ8OdjNBc#tgstation-Development-Guide).
 
-For overall design documentation see [HackMD](https://hackmd.io/@tgstation).
+For overall design documentation see [TGstation's HackMD page](https://hackmd.io/@tgstation) and [ours](https://hackmd.io/@fulpstation).
 
-For lore, [see Common Core](https://github.com/tgstation/common_core).
+For lore, see [TGstation's Common Core lore repository](https://github.com/tgstation/common_core).
 
 ## LICENSE
 
